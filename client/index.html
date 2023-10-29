@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pre-processing videos in the client</title>
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <main>
+        <section id="controls-section">
+          <input id="file-input" type="file" accept="video/*" />
+          <button id="upload-btn">
+            <img src="/upload.svg" alt="Upload" />
+            Upload video
+          </button>
+          <p>or <button id="test-sample-btn">test with sample video</button></p>
+        </section>
+        <section id="video-preview-section" class="inactive">
+          <canvas id="video-preview"></canvas>
+          <div id="video-preview-data">
+            <p id="filename"></p>
+            <p id="file-size"></p>
+          </div>
+          <p id="time-elapsed"></p>
+        </section>
+      </main>
+      <footer>
+        <p>Client-side video processor</p>
+        <a href="https://github.com/Shoonkey/js-expert-08/"
+          ><img src="/github-mark-white.svg" alt="Github repository"
+        /></a>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,109 @@
+/* Global / Reset */
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* App */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  background: #0f152e;
+  color: #e2e2e2;
+  min-height: 100dvh;
+}
+
+main {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1fr;
+  flex-grow: 1;
+}
+
+@media screen and (width > 720px) {
+  main {
+    grid-template-rows: 1fr;
+    grid-template-columns: 1fr 0fr;
+  }
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 2rem;
+  margin-inline: auto;
+}
+
+footer img {
+  width: 2rem;
+}
+
+footer img:hover {
+  filter: opacity(0.9);
+}
+
+/* Controls section */
+
+#controls-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+}
+
+#file-input {
+  display: none;
+}
+
+#upload-btn {
+  all: unset;
+  cursor: pointer;
+  padding: 1rem .5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 1.5rem;
+}
+
+#upload-btn:hover {
+  color: #c2c2c2;
+}
+
+#upload-btn img {
+  width: 4rem;
+}
+
+#test-sample-btn {
+  all: unset;
+  text-decoration: underline;
+  color: lightblue;
+  cursor: pointer;
+}
+
+/* Video preview section */
+#video-preview-section {
+  display: flex;
+  flex-direction: column;
+}
+
+#video-preview-data {
+  display: flex;
+  gap: 32px;
+}
+
+#video-preview-section.inactive #video-preview-data {
+  gap: 0;
+}
+
+#video-preview-section.inactive #video-preview {
+  width: 0px;
+}
