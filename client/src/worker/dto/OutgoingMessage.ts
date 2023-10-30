@@ -1,6 +1,7 @@
 interface OutgoingMessage {
-  message: string;
   done: boolean;
+  buffers: any[];
+  filename: string;
 }
 
 export default OutgoingMessage;

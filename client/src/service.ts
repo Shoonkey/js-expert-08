@@ -6,7 +6,7 @@ interface ProcessVideoProps {
   canvas: OffscreenCanvas;
   onStart: () => void;
   onFrame: (frame: VideoFrame) => void;
-  onFinish: () => void;
+  onFinish: (data: any) => void;
 }
 
 class Service {
@@ -22,7 +22,7 @@ class Service {
       if (!data.done)
         return;
       
-      onFinish();
+      onFinish(data);
     };
 
     worker.onerror = (err) => console.error("Error on worker", err);

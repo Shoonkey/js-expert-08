@@ -21,6 +21,9 @@ View.configureOnFileChange((file) => {
     onStart: () =>
       Clock.start((time) => View.updateElapsedTime(`Process started ${time}`)),
     onFrame(frame) {},
-    onFinish: () => Clock.stop((time) => View.updateElapsedTime(`Process took ${time.replace("ago", "")}`)),
+    onFinish: (data) => {
+      Clock.stop((time) => View.updateElapsedTime(`Process took ${time.replace("ago", "")}`));
+      View.downloadBlobAsFile(data.buffers, data.filename);
+    },
   });
 });
