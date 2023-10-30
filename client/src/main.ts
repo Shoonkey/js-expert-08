@@ -1,5 +1,5 @@
 import View from "./view";
-import Controller from "./controller";
+import Service from "./service";
 import Util from "./util";
 import Clock from "./clock";
 
@@ -14,8 +14,13 @@ View.configureTestSampleBtnClick(async () => {
 
 View.configureOnFileChange((file) => {
   View.activateVideoPreview();
-  Controller.processVideo(file);
-  Clock.start((time) => View.updateElapsedTime(time));
 
-  setTimeout(() => Clock.stop(), 5000);
+  Service.processVideoInBackground({
+    videoFile: file,
+    canvas: View.getCanvas(),
+    onStart: () =>
+      Clock.start((time) => View.updateElapsedTime(`Process started ${time}`)),
+    onFrame(frame) {},
+    onFinish: () => Clock.stop((time) => View.updateElapsedTime(`Process took ${time.replace("ago", "")}`)),
+  });
 });

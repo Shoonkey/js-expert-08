@@ -32,10 +32,16 @@ class View {
       const [file] = target.files as FileList;
 
       this._videoPreviewFilename.innerText = file.name;
-      this._videoPreviewFileSize.innerText = Util.getReadableSize(file.size);
+      this._videoPreviewFileSize.innerText = Util.getReadableVideoSize(
+        file.size
+      );
 
       callback(file);
     };
+  }
+
+  getCanvas() {
+    return this._videoPreviewCanvas.transferControlToOffscreen();
   }
 
   setInputFileManually(file: File) {

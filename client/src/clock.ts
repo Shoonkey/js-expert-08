@@ -30,8 +30,9 @@ class Clock {
     });
   }
 
-  stop() {
+  stop(callback: (time: string) => void) {
     clearInterval(this._intervalId);
+    callback(this._getUnit(this._ms));
     return
   }
 }
