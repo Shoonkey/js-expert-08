@@ -4,6 +4,7 @@ import IncomingMessage from "./dto/IncomingMessage";
 import MP4Demuxer from "./MP4Demuxer";
 import VideoProcessor from "./VideoProcessor";
 import CanvasRenderer from "./CanvasRenderer";
+import Service from "./service";
 import { RESOLUTIONS, getVideoEncoderConfig } from "./config";
 
 const encoderConfig = getVideoEncoderConfig({
@@ -19,6 +20,7 @@ const videoProcessorInstance = new VideoProcessor({
     height: encoderConfig.height,
     bitrate: encoderConfig.bitrate
   }),
+  service: new Service("http://localhost:3000")
 });
 
 self.onmessage = async ({ data }: MessageEvent<IncomingMessage>) => {
