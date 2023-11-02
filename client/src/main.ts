@@ -5,7 +5,7 @@ import Clock from "./clock";
 
 import "./style.css";
 
-View.configureUploadBtnClick();
+View.configureUploadBtnsClick();
 
 View.configureTestSampleBtnClick(async () => {
   const sampleVideo = await Util.getSampleVideo();
@@ -13,19 +13,28 @@ View.configureTestSampleBtnClick(async () => {
 });
 
 View.configureOnFileChange((file) => {
-  View.activateVideoPreview();
+  View.changeToVideoPreview();
 
   Service.processVideoInBackground({
     videoFile: file,
-    canvas: View.getCanvas(),
-    onStart: () =>
-      Clock.start((time) => View.updateElapsedTime(`Process started ${time}`)),
-    onFrame(frame) {},
-    onFinish: (data) => {
-      Clock.stop((time) => View.updateElapsedTime(`Process took ${time.replace("ago", "")}`));
+    onStart() {
+      Clock.start((time) => View.updateElapsedTime(`Process started ${time}`));
+    },
+    onFrame(frame) {
+      View.setVideoPreviewFrame(frame);
+    },
+    onFinish() {
+      Clock.stop((time) =>
+        View.updateElapsedTime(`Process took ${time.replace("ago", "")}`)
+      );
+    },
+    async onEncodedFragment({ fragment, type, segmentNumber }) {
+      const filenameWithoutExtension = file.name.split("/").pop()!.replace(".mp4", "");
 
-      if (data.buffers)
-        View.downloadBlobAsFile(data.buffers, data.filename);
+      await Service.uploadFile({
+        filename: `${filenameWithoutExtension}-144p.${segmentNumber}.${type}`,
+        fileBuffer: fragment
+      });
     },
   });
 });

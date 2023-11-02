@@ -1,8 +1,16 @@
 import mp4box from "mp4box";
 
+interface DemuxerConfig {
+  codec: string;
+  codedWidth: number;
+  codedHeight: number;
+  description: Uint8Array;
+  durationSecs: number;
+}
+
 interface DemuxerOptions {
-  onConfig: (config: any) => void;
-  onChunk: (chunk: any) => void;
+  onConfig: (config: DemuxerConfig) => void;
+  onChunk: (chunk: EncodedVideoChunk) => void;
 }
 
 const NO_OP = () => {};
@@ -36,29 +44,29 @@ class MP4Demuxer {
   private _onReady(args: any) {
     const [track] = args.videoTracks;
 
-    this._onConfig({ 
+    this._onConfig({
       codec: track.codec,
       codedWidth: track.video.width,
       codedHeight: track.video.height,
       description: this._getTrackDescription(track.id),
-      durationSecs: args.duration / args.timescale
+      durationSecs: args.duration / args.timescale,
     });
 
     this._file.setExtractionOptions(track.id);
     this._file.start();
   }
 
-  private _onSamples(trackId: number, ref: any, samples: any) {
+  private _onSamples(_trackId: number, _ref: any, samples: any) {
     for (const sample of samples) {
       const chunk = new EncodedVideoChunk({
-          type: sample.is_sync ? "key" : "delta",
-          timestamp: 1e6 * sample.cts / sample.timescale,
-          duration: 1e6 * sample.duration / sample.timescale,
-          data: sample.data
+        type: sample.is_sync ? "key" : "delta",
+        timestamp: (1e6 * sample.cts) / sample.timescale,
+        duration: (1e6 * sample.duration) / sample.timescale,
+        data: sample.data,
       });
 
       this._onChunk(chunk);
-  }
+    }
   }
 
   private _onError(err: Error) {
@@ -71,16 +79,23 @@ class MP4Demuxer {
     for (const entry of track.mdia.minf.stbl.stsd.entries) {
       const box = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
       if (box) {
-        const stream = new mp4box.DataStream(undefined, 0, mp4box.DataStream.BIG_ENDIAN);
+        const stream = new mp4box.DataStream(
+          undefined,
+          0,
+          mp4box.DataStream.BIG_ENDIAN
+        );
         box.write(stream);
-        return new Uint8Array(stream.buffer, 8);  // Remove the box header.
+        return new Uint8Array(stream.buffer, 8); // Remove the box header.
       }
     }
 
     throw new Error("avcC, hvcC, vpcC, or av1C box not found");
-}
+  }
 
-  async run(fileStream: ReadableStream, { onConfig, onChunk }: DemuxerOptions) {
+  async run(
+    fileStream: ReadableStream<Uint8Array>,
+    { onConfig, onChunk }: DemuxerOptions
+  ) {
     this._onConfig = onConfig;
     this._onChunk = onChunk;
 

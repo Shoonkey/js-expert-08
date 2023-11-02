@@ -1,10 +1,9 @@
 import WebMWriter from "../deps/webm-writer2";
 
-import IncomingMessage from "./dto/IncomingMessage";
+import WorkerIncomingMessage from "../dto/WorkerIncomingMessage";
+import WorkerOutgoingMessage from "../dto/WorkerOutgoingMessage";
 import MP4Demuxer from "./MP4Demuxer";
 import VideoProcessor from "./VideoProcessor";
-import CanvasRenderer from "./CanvasRenderer";
-import Service from "./service";
 import { RESOLUTIONS, getVideoEncoderConfig } from "./config";
 
 const encoderConfig = getVideoEncoderConfig({
@@ -18,17 +17,24 @@ const videoProcessorInstance = new VideoProcessor({
     codec: "VP9",
     width: encoderConfig.width,
     height: encoderConfig.height,
-    bitrate: encoderConfig.bitrate
+    bitrate: encoderConfig.bitrate,
   }),
-  service: new Service("http://localhost:3000")
 });
 
-self.onmessage = async ({ data }: MessageEvent<IncomingMessage>) => {
+self.onmessage = async ({ data }: MessageEvent<WorkerIncomingMessage>) => {
   await videoProcessorInstance.start({
     file: data.videoFile,
-    canvas: data.canvas,
     encoderConfig,
-    onFrame: new CanvasRenderer(data.canvas).getRenderer(),
-    onMessage: (message) => self.postMessage(message),
+    onFrame(frame) {
+      const videoFrameMessage: WorkerOutgoingMessage = { videoFrame: frame, done: false };
+      self.postMessage(videoFrameMessage);
+    },
+    onEncodedFragment(fragment) {
+      const encodedFragmentData: WorkerOutgoingMessage = { videoFragment: fragment, done: false };
+      self.postMessage(encodedFragmentData);
+    }
   });
+
+  const doneMessage: WorkerOutgoingMessage = { done: true };
+  self.postMessage(doneMessage);
 };

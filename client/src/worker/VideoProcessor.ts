@@ -1,14 +1,12 @@
 import WebMWriter from "../deps/webm-writer2";
+import EncodedFragment from "../dto/EncodedFragment";
 import MP4Demuxer from "./MP4Demuxer";
-import OutgoingMessage from "./dto/OutgoingMessage";
-import Service from "./service";
 
 interface StartVideoProcessingProps {
   file: File;
-  canvas: OffscreenCanvas;
   encoderConfig: VideoEncoderConfig;
   onFrame: (frame: VideoFrame) => void;
-  onMessage: (message: OutgoingMessage) => void;
+  onEncodedFragment: (data: EncodedFragment) => void;
 }
 
 interface DecodeChunkConfigChunk {
@@ -17,26 +15,22 @@ interface DecodeChunkConfigChunk {
 }
 
 class VideoProcessor {
-  _mp4Demuxer: typeof MP4Demuxer;
-  _webMWriter: typeof WebMWriter;
-  _service: Service;
+  private _mp4Demuxer: typeof MP4Demuxer;
+  private _webMWriter: typeof WebMWriter;
 
   constructor({
     mp4Demuxer,
     webMWriter,
-    service,
   }: {
     mp4Demuxer: typeof MP4Demuxer;
     webMWriter: typeof WebMWriter;
-    service: Service;
   }) {
     this._mp4Demuxer = mp4Demuxer;
     this._webMWriter = webMWriter;
-    this._service = service;
   }
 
-  decodeMP4(fileStream: ReadableStream) {
-    return new ReadableStream({
+  private _decodeMP4(fileStream: ReadableStream<Uint8Array>) {
+    return new ReadableStream<VideoFrame>({
       start: (controller) => {
         const decoder = new VideoDecoder({
           output(frame) {
@@ -114,7 +108,6 @@ class VideoProcessor {
     const writable = new WritableStream<VideoFrame>({
       async write(frame) {
         _encoder.encode(frame);
-        frame.close();
       },
     });
 
@@ -124,11 +117,14 @@ class VideoProcessor {
     };
   }
 
-  renderDecodedFramesAndGetEncodedChunks(
-    onFrame: StartVideoProcessingProps["onFrame"]
+  private _renderDecodedFramesAndGetEncodedChunks(
+    onFrame: (frame: VideoFrame) => void
   ) {
     let _decoder: VideoDecoder;
-    return new TransformStream<EncodedVideoChunk | DecodeChunkConfigChunk>({
+    return new TransformStream<
+      EncodedVideoChunk | DecodeChunkConfigChunk,
+      EncodedVideoChunk
+    >({
       start: (controller) => {
         _decoder = new VideoDecoder({
           output(frame) {
@@ -148,102 +144,70 @@ class VideoProcessor {
         }
 
         _decoder.decode(encodedChunk);
-
-        // need the encoded version to use webM
         controller.enqueue(encodedChunk);
       },
     });
   }
 
-  transformIntoWebM() {
-    const writable = new WritableStream({
-      write: (chunk) => {
-        this._webMWriter.addFrame(chunk);
-      },
-      close() {
-        debugger;
-      },
-    });
+  private _transformIntoWebM(): TransformStream<EncodedVideoChunk, any> {
     return {
       readable: this._webMWriter.getStream(),
-      writable,
+      writable: new WritableStream({
+        write: (chunk) => {
+          this._webMWriter.addFrame(chunk);
+        },
+      }),
     };
   }
 
-  upload(filename: string, resolution: string, type: string) {
+  private _getVideoFragments(onEncodedFragment: StartVideoProcessingProps["onEncodedFragment"]) {
     const chunks: any[] = [];
     let byteCount = 0;
     let segmentCount = 0;
+
     const triggerUpload = async (chunks: any) => {
       const blob = new Blob(chunks, { type: "video/webm" });
 
-      // fazer upload
-      await this._service.uploadFile({
-        filename: `${filename}-${resolution}.${++segmentCount}.${type}`,
-        fileBuffer: blob,
+      await onEncodedFragment({
+        fragment: blob,
+        type: "webm",
+        segmentNumber: segmentCount
       });
-      // vai remover todos os elementos
-      chunks.length = 0;
-      byteCount = 0;
+
+      segmentCount++;
     };
 
     return new WritableStream({
       async write({ data }) {
         chunks.push(data);
         byteCount += data.byteLength;
-        // se for menor que 10mb não faz upload!
+
         if (byteCount <= 10e6) return;
+
         await triggerUpload(chunks);
-        // renderFrame(frame)
+        chunks.length = 0;
+        byteCount = 0;
       },
       async close() {
-        if (!chunks.length) return;
+        if (chunks.length === 0) return;
         await triggerUpload(chunks);
       },
     });
   }
 
-  async start({
-    file,
-    encoderConfig,
-    onFrame,
-    onMessage,
-  }: StartVideoProcessingProps) {
+  async start({ file, encoderConfig, onFrame, onEncodedFragment }: StartVideoProcessingProps) {
     const fileStream = file.stream();
-    const fileName = file.name.split("/").pop()!.replace(".mp4", "");
-
-    const decodeStream = this.decodeMP4(fileStream);
-    // const consumeFrames = new WritableStream<VideoFrame>({
-    //   write(frame) {
-    //     onFrame(frame);
-    //   },
-    // });
-
-    // const _buffers: any[] = [];
-
-    await decodeStream
-      .pipeThrough(this._encode144p(encoderConfig))
-      .pipeThrough(this.renderDecodedFramesAndGetEncodedChunks(onFrame))
-      .pipeThrough(this.transformIntoWebM())
-      // .pipeThrough(
-      //   new TransformStream({
-      //     transform: ({ data }: any, controller) => {
-      //       _buffers.push(data);
-      //       controller.enqueue(data);
-      //     },
-      //     flush: () => {
-      //       onMessage({
-      //         done: true,
-      //         buffers: _buffers,
-      //         filename: fileName.concat("-144p.webm"),
-      //       });
-      //     },
-      //   })
-      // )
-      .pipeTo(this.upload(fileName, "144p", "webm"));
-      // .pipeTo(consumeFrames)
     
-    onMessage({ done: true });
+    await this._decodeMP4(fileStream)
+      .pipeThrough(this._encode144p(encoderConfig))
+      .pipeThrough(
+        this._renderDecodedFramesAndGetEncodedChunks((frame) => {
+          onFrame(frame);
+          frame.close();
+        })
+      )
+      .pipeThrough(this._transformIntoWebM())
+      .pipeTo(this._getVideoFragments(onEncodedFragment));
   }
 }
 

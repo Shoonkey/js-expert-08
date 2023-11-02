@@ -22,16 +22,9 @@ html, body {
 
 main {
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  grid-template-columns: 1fr;
+  margin-block: 4rem;
+  place-items: center;
   flex-grow: 1;
-}
-
-@media screen and (width > 720px) {
-  main {
-    grid-template-rows: 1fr;
-    grid-template-columns: 1fr 0fr;
-  }
 }
 
 footer {
@@ -48,6 +41,17 @@ footer img {
 
 footer img:hover {
   filter: opacity(0.9);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.link-btn {
+  all: unset;
+  text-decoration: underline;
+  color: lightblue;
+  cursor: pointer;
 }
 
 /* Controls section */
@@ -82,17 +86,15 @@ footer img:hover {
   width: 4rem;
 }
 
-#test-sample-btn {
-  all: unset;
-  text-decoration: underline;
-  color: lightblue;
-  cursor: pointer;
-}
-
 /* Video preview section */
 #video-preview-section {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+  padding: 4rem;
 }
 
 #video-preview-data {
@@ -100,10 +102,7 @@ footer img:hover {
   gap: 32px;
 }
 
-#video-preview-section.inactive #video-preview-data {
-  gap: 0;
-}
-
-#video-preview-section.inactive #video-preview {
-  width: 0px;
+#video-preview {
+  width: 80%;
+  margin: auto;
 }

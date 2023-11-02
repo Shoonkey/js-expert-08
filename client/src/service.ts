@@ -1,36 +1,69 @@
-import IncomingMessage from "./worker/dto/IncomingMessage";
-import OutgoingMessage from "./worker/dto/OutgoingMessage";
+
+import EncodedFragment from "./dto/EncodedFragment";
+import WorkerIncomingMessage from "./dto/WorkerIncomingMessage";
+import WorkerOutgoingMessage from "./dto/WorkerOutgoingMessage";
 
 interface ProcessVideoProps {
   videoFile: File;
-  canvas: OffscreenCanvas;
   onStart: () => void;
   onFrame: (frame: VideoFrame) => void;
-  onFinish: (data: any) => void;
+  onEncodedFragment: (data: EncodedFragment) => Promise<void>;
+  onFinish: () => void;
+}
+
+interface UploadFileProps {
+  filename: string;
+  fileBuffer: Blob;
 }
 
 class Service {
+  private _serverURL: string = "http://localhost:3000";
+
   async processVideoInBackground({
     videoFile,
-    canvas,
     onStart,
+    onFrame,
+    onEncodedFragment,
     onFinish,
   }: ProcessVideoProps) {
     const worker = new Worker("./src/worker", { type: "module" });
 
-    worker.onmessage = ({ data }: MessageEvent<OutgoingMessage>) => {
-      if (!data.done)
+    worker.onmessage = async ({ data }: MessageEvent<WorkerOutgoingMessage>) => {
+      if (data.done) {
+        onFinish();
         return;
-      
-      onFinish(data);
+      }
+
+      if (data.videoFrame) {
+        onFrame(data.videoFrame);
+        return;
+      }
+
+      if (data.videoFragment) {
+        await onEncodedFragment(data.videoFragment);
+        return;
+      }
     };
 
     worker.onerror = (err) => console.error("Error on worker", err);
 
-    const data: IncomingMessage = { videoFile, canvas }; 
-    worker.postMessage(data, [canvas]);
-    
+    const data: WorkerIncomingMessage = { videoFile };
+    worker.postMessage(data);
+
     onStart();
+  }
+
+  async uploadFile({ filename, fileBuffer }: UploadFileProps) {
+    const formData = new FormData();
+    formData.append(filename, fileBuffer);
+
+    const response = await fetch(this._serverURL, {
+      method: "POST",
+      body: formData,
+    });
+
+    console.assert(response.ok, "response is not ok", response);
+    return response;
   }
 }
 
